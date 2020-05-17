@@ -1,0 +1,27 @@
+
+nuc=readDNAStringSet("covid_nuc.fasta")
+#dna <-AlignSeqs(nuc)
+#BrowseSeqs(dna)
+library("ggmsa")
+nuc2=ggmsa::tidy_msa(nuc)
+nuc2$name=str_sub(nuc2$name,1,10)
+library(ggplot2)
+library(raster)
+#Methode1
+ggplot(data=nuc2[1:1000,], aes(x=position, y=name,label = character))  +
+  geom_tile(aes(colour = factor(character)))+
+  geom_label(aes(fill = factor(character)), colour = "white", fontface = "bold")
+
+#Methode2
+ggplot(data=nuc2[1:1500,], aes(x=position, y=name,label = character))  +
+  geom_tile(aes(fill = factor(character)))+
+  geom_text(aes(fill = factor(character)))
+
+
+
+
+
+
+
+
+

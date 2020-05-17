@@ -1,0 +1,6 @@
+"0","Database <- read.table(""RAP-MSU_2020-03-24.txt"", header =F)"
+"0","colnames(Database)= c(""RAPDB"",""MSU"")"
+"0","Database<-separate_rows(Database,""MSU"",sep = "","")"
+"0","Database$MSU=sub("".[[:digit:]]*$"", """", Database$MSU)"
+"0","Database<-as.data.table(Database)"
+"0",""

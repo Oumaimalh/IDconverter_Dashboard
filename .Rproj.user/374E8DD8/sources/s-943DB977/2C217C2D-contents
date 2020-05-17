@@ -1,0 +1,162 @@
+
+library(Biostrings)
+#library(DECIPHER)
+#nuc=readDNAStringSet("covid_nuc.fasta")
+#dna <-AlignSeqs(nuc)
+#BrowseSeqs(dna)
+library("ggmsa")
+nuc2=ggmsa::tidy_msa(nuc)
+nuc2$name=str_sub(nuc2$name,1,10)
+library(ggplot2)
+library(raster)
+ggplot(data=nuc2[1:1000,], aes(x=position, y=name,label = character))  +
+  geom_tile(aes(colour = factor(character)))+
+  geom_label(aes(fill = factor(character)), colour = "white", fontface = "bold")
+
+
+ggplot(data=nuc2[1:1500,], aes(x=position, y=name,label = character))  +
+  geom_tile(aes(fill = factor(character)))+
+  geom_text(aes(fill = factor(character)))
+
+
+
+
+
+
+
+
+
+
+
+
+null_color           <- "grey85" ## Default missing and ambiguous
+y1 <- y2 <- x1 <- x2 <- NULL
+default_plot_step    <- 1
+
+extract_subalign <- function(seqs, plot_step = 1, tlist = c(), clist = c(), texcl = FALSE, cexcl = FALSE, cincl = FALSE)
+{
+  # Create subset of seqs containing only the desired taxa to plot
+  if (length(tlist) == 0){
+    sub_seqs_raw <- seqs
+  }else if (texcl){
+    sub_seqs_raw <- seqs[!(names(seqs) %in% tlist)] # Exclude sequences in the provided list
+  }else
+  {
+    sub_seqs_raw <- seqs[tlist]
+  }
+  # Futher subset the sequences to contain only the desired columns
+  if (length(clist) == 0){
+    clist <- 1:length(sub_seqs_raw[[1]])
+  }
+  if (cexcl){
+    sub_seqs <- lapply(sub_seqs_raw, `[`, (-1*clist))
+  }
+  if (cincl){
+    sub_seqs <- lapply(sub_seqs_raw, `[`, (1*clist))
+  } else
+  {
+    sub_seqs <- lapply(sub_seqs_raw, `[`)
+  }
+  # Create the data frame to plot
+  sub_seqs <- rev(sub_seqs) # For proper plotting direction
+  each_length <- length(sub_seqs[[1]])
+  seqnames <- c(t(replicate(each_length, names(sub_seqs))))
+  seqletters <- unlist(sub_seqs)
+  y1 <- c(t(replicate(each_length, 1:length(sub_seqs))))
+  y2 <- y1 + plot_step
+  x1 <- rep(1:each_length, length(sub_seqs))
+  x2 <- x1 + plot_step
+  plot_frame <- data.frame( "x1"  = x1,
+                            "y1"  = y1,
+                            "x2"  = x2,
+                            "y2"  = y2,
+                            "name" = seqnames,
+                            "seq"  = seqletters)
+  rownames(plot_frame) <- NULL
+  plot_frame
+}
+define_palette <- function( inpalette, uniques )
+{
+  palette <- c()
+  ambigc <- null_color
+  ambig <- c("?" = ambigc , "-" = ambigc, "*" = ambigc)
+  
+  # Random colors (also called if nothing specified)
+  if (  tolower(inpalette) == "random" || is.na(inpalette) )
+  {
+    for (m in names(ambig)){
+      uniques <- uniques[!uniques == m]
+    }
+    subcolors <- colors()[colors() != ambigc] ## Ensure null_color is not in the random scheme
+    palette <- sample( subcolors, length(uniques) )
+    names(palette) <- uniques
+    palette <- c( palette, ambig )
+  }
+  
+  # Default alphabet colors
+  else if (tolower(inpalette) == "rna" || tolower(inpalette) == "dna" || tolower(inpalette) == "protein")
+  {
+    if (tolower(inpalette) == "rna" || tolower(inpalette) == "dna")
+    {
+      missing_names <- c("M", "R", "W", "S", "Y", "K", "V", "H", "D", "B", "X", "N")
+      palette <- c("A" = "mediumblue", "C" = "orangered1", "G" = "limegreen", "T" = "khaki1", "U" = "khaki1")
+    }
+    else {
+      missing_names <- c("B", "X", "Z")
+      palette <- c("A" = "limegreen", "G" = "limegreen",
+                   "C" = "lightgreen",
+                   "D" = "darkgreen", "E" = "darkgreen", "N" = "darkgreen", "Q" = "darkgreen",
+                   "I" = "lightblue1", "L" = "lightblue1", "M" = "lightblue1", "V" = "lightblue1",
+                   "F" = "lavender", "W" = "lavender", "Y" = "lavender", 
+                   "H" = "navy", 
+                   "K" = "orange", "R" = "orange",
+                   "P" = "salmon", 
+                   "S" = "red", "T" = "red") 
+    }
+    # Missing color default
+    missing_color <- null_color
+    missing_palette <- rep(missing_color, length(missing_names))
+    names(missing_palette) <- missing_names
+    palette <- c( palette, missing_palette, ambig )
+  }
+  
+  ##
+  ##
+  ## Add more color schemes maybe?
+  ##
+  ##
+  # Assign user-provided colors
+  else {
+    palette <- inpalette
+  }
+  palette
+  
+}
+
+
+
+
+
+
+
+
+  plot_frame <- extract_subalign(dna)
+  
+  # Determine alignment characters for palette construction
+  unique_chars <- unique( plot_frame$seq.MT334544.1.Severe.acute.respiratory.syndrome.coronavirus.2.isolate.SARS.CoV.2.human.USA.UT.00028.2020..complete.genome )
+  pal <- define_palette(palette, unique_chars)
+  
+  # Sort sequence columns so legend is alphabetical
+   plot_frame$seq.MT334544.1.Severe.acute.respiratory.syndrome.coronavirus.2.isolate.SARS.CoV.2.human.USA.UT.00028.2020..complete.genome  <- factor( plot_frame$seq.MT334544.1.Severe.acute.respiratory.syndrome.coronavirus.2.isolate.SARS.CoV.2.human.USA.UT.00028.2020..complete.genome , levels = sort(levels( plot_frame$seq.MT334544.1.Severe.acute.respiratory.syndrome.coronavirus.2.isolate.SARS.CoV.2.human.USA.UT.00028.2020..complete.genome )))
+  # Plot
+  theme_set(theme_bw() + theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(), panel.border = element_blank()))
+  if ( taxon_labels == FALSE){
+    p <- ggplot() +
+      geom_rect(plot_frame, mapping=aes(xmin=x1-1, xmax=x2-1, ymin=y1-1, ymax=y2-1, fill = seq), linetype=0) 
+  }
+  else {
+    p <- ggplot() + geom_rect(plot_frame, mapping=aes(xmin=x1-1, xmax=x2-1, ymin =
+                                                        y1-1, ymax=y2-1, fill = seq), linetype=0) +                                         scale_fill_manual(values=pal, name = legend_title) +                                 scale_y_discrete(limits = names(seq_list))
+  }
+  p
+}

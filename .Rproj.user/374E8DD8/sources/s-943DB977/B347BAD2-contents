@@ -1,0 +1,26 @@
+---
+title: "Viz"
+author: "Lahiani oumaima"
+date: "17/04/2020"
+output: rmdformats::readthedown
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(Biostrings)
+#library(DECIPHER)
+```
+
+
+
+```{r}
+nuc=readDNAStringSet("covid_nuc.fasta")
+
+
+ 
+```

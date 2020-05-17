@@ -1,0 +1,56 @@
+library(shiny)
+
+ui <- shinyUI(
+  
+  pageWithSidebar(
+    
+    headerPanel("Entering Vectors in Shiny")
+    
+    , sidebarPanel(
+      
+      selectizeInput(
+        "vec1"
+        , "Enter a vector"
+        , choices = NULL
+        , multiple = TRUE
+        , options = list(create = TRUE)
+      )
+      
+    ),
+    
+    mainPanel(
+      
+      h4("You entered")
+      
+      , verbatimTextOutput("oid1")
+      
+      , verbatimTextOutput("oid2")
+      
+    )
+    
+  )
+)
+
+server <- shinyServer(function(input, output) {
+  
+  output$oid1 <- renderPrint({
+    
+    req(input$vec1)
+    
+    cat("As string:\n")
+    print(input$vec1)
+    
+  })
+  
+  output$oid2 <- renderPrint({
+    
+    req(input$vec1)
+    
+    cat("As atomic vector:\n")
+    print(as.character(input$vec1))
+    
+  })
+  
+})
+
+shinyApp(ui = ui, server = server)

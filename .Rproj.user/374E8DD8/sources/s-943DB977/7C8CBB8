@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1589718324975.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "7C8CBB8",
+    "lastKnownWriteTime" : 1589734867,
+    "last_content_update" : 1589734867062,
+    "path" : "C:/Users/asus/Desktop/Atelier1/seance6_P2.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "6,0",
+        "last_setup_crc32" : "943DB977bb338d19",
+        "scrollLine" : "1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

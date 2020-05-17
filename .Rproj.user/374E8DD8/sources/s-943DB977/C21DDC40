@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1589718395025.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2043165377",
+    "id" : "C21DDC40",
+    "lastKnownWriteTime" : 1589734867,
+    "last_content_update" : 1589734867075,
+    "path" : "C:/Users/asus/Desktop/Atelier1/Converter/server.R",
+    "project_path" : "server.R",
+    "properties" : {
+        "cursorPosition" : "29,1",
+        "scrollLine" : "9",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

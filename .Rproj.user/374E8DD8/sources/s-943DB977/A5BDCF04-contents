@@ -1,0 +1,1043 @@
+split_data <- function(in.data, type_data)
+{
+  in.data    <- in.data[sample(nrow(in.data)), ]
+  data.index <- createDataPartition(in.data$Y, p = 0.8, list = FALSE, times = 1)
+  
+  train.data <- in.data[data.index, ]
+  test.data  <- in.data[-data.index, ]
+  
+  if(type_data == 1)
+  {
+    
+    return(train.data)
+  }else
+  {
+    return(test.data)
+  }
+}
+
+
+classifier2 <- function(train.data, test.data)
+{
+  result.frame  <- data.frame(model.name = as.character(), TP=numeric(), FN=numeric(), FP=numeric(),
+                              TN= numeric(),SENSITIVITY=numeric(),SPECITICITY=numeric(),
+                              ACCURACY=numeric(),AUC=numeric())
+  
+  tree.model <- rpart(Y~., data = train.data, method = "class")
+  result.frame <- rbind(result.frame, predict.auc("decison.tree", tree.model, test.data))
+  
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  result.frame <- rbind(result.frame, predict.auc("random.forest", random.model, test.data))
+  
+  logit.model <- glm(Y~., data = train.data, family = binomial(link = "logit"))
+  result.frame <- rbind(result.frame, predict.auc("logistic.regrr", logit.model, test.data, 1))
+  
+  # neural.model <- neuralNetwork(train.data, test.data)
+  #result.frame <- rbind(result.frame, neural.model)
+  
+  svm.model <- ksvm(as.factor(Y)~., data = train.data, scaled = TRUE, prob.model = T)
+  result.frame <- rbind(result.frame, predict.auc("svm", svm.model, test.data, 3))
+  
+  knn.model <- knn(train.data, test.data, as.factor(train.data$Y), k = 5)
+  result.frame <- rbind(result.frame, predict.auc("knn.model", knn.model, test.data, 4))
+  
+  return(result.frame)
+}
+
+data1<-read_excel("Gerdata.xls")
+data1$`Solde du compte courant`<- mapvalues(data1$`Solde du compte courant`,from =c(2,3),
+                                            to = c(2,2))
+ 
+data1$`Compte d'épargne / obligations`<- mapvalues(data1$`Compte d'épargne / obligations`,from =c(2,3,4),to = c(2,2,2))
+data1$`Statut personnel et sexe`<- mapvalues(data1$`Statut personnel et sexe`,from =c(1,3,4),to = c(1,1,1))
+
+data1$`Autres débiteurs / garants`<- mapvalues(data1$`Autres débiteurs / garants`,from =c(3,2),to = c(2,2))
+data1$Age<-log1p(data1$Age)
+data1$`Durée de crédit (en mois)`<-log1p(data1$`Durée de crédit (en mois)`)
+data1$`Montant du crédit`<-log1p(data1$`Montant du crédit`)
+data1$Motif<-mapvalues( data1$Motif,from =c(4,7,5,9,6,8,0,1),to = c(9,9,9,9,8,8,1,1))
+
+datagraph<-data1
+datagraph$`Solde du compte courant`<-as.factor(datagraph$`Solde du compte courant`)
+datagraph$`Solde du compte courant`<- mapvalues(datagraph$`Solde du compte courant`,from =c("1","2","4"),
+                                                to = c("moins que 0","supérieur 0","pas de compte courant"))
+
+
+datagraph$`Historique des crédits`<- mapvalues(datagraph$`Historique des crédits`,from =c("0","1","2","3","4"),
+                                               to = c("aucun crédit pris / tous les crédits remboursés"," tous les crédits de cette banque ont été remboursés","crédits déjà remboursés jusqu'à maintenant","retard dans le paiement dans le passé","compte critique / autres crédits existants (pas dans cette banque)"))
+
+datagraph$Motif<- mapvalues(datagraph$Motif,from=c("0","1","2","3","4","5","6","7","8","9"),
+                            to = c("Voiture ","Voiture","fourniture/équipement","Télévision","Appareil électroménager","Réparation","Education","Recyclage (reconversion)","Projet/Education","Autres"))
+datagraph$`Compte d'épargne / obligations`<-mapvalues(datagraph$`Compte d'épargne / obligations`,from =c("1","2","5"),to = c("moins que 100","superieur a 100","Pas de compte épargne"))
+datagraph$`Employé depuis`<-mapvalues(datagraph$`Employé depuis`,from =c("1","2","3","4","5"),to = c("En chômage","inferieur 1ans","entre 1 ans  et 4ans","entre 4ans et 7ans","supérieur 7ans"))
+datagraph$`Statut personnel et sexe`<-mapvalues(datagraph$`Statut personnel et sexe`,from =c("1","2","5"),to = c("Homme"," Femme","Femme : Célibataire"))
+datagraph$`Autres débiteurs / garants`<-mapvalues(datagraph$`Autres débiteurs / garants`,from =c("1","2"),to = c("Aucun","Codemandeur ou Garant"))
+datagraph$Logement<-mapvalues(datagraph$Logement,from =c("1","2","3"),to = c("Locataire"," Propriétaire","Gratuitement"))
+
+datagraph$Emploi<-mapvalues(datagraph$Emploi,from =c("1","2","3","4"),to = c("sans emploi / non qualifié - non-résident","non qualifié - résident","Employé/Fonctionnaire","Manager/Indépendant/Ouvrier Qualifié"))
+datagraph$Statut<-mapvalues(datagraph$Statut,from =c("1","2"),to = c("Solvable","Non solvable"))
+ 
+data <- read_excel("Gerdata.xls")
+
+datagraph[["Statut"]]<-data[["Statut"]]
+datagraph[["Statut"]]<-(datagraph[["Statut"]]-1.00)/abs(2.00-1.00)
+n<-ncol(datagraph)
+
+set.seed(402)
+datafinale<-datagraph
+#datafinale[,sapply(datafinale, is.numeric)][,1:6]<-scale(datafinale[,sapply(datafinale, is.numeric)][,1:6])
+
+datafinale<-datafinale[,-c(9)] 
+
+
+dumdata=fastDummies::dummy_cols(datafinale,remove_first_dummy = TRUE)
+
+
+
+Y=datafinale$Statut
+dumdata=cbind(datafinale[,sapply(datafinale, is.numeric)][,1:6],dumdata[,16:length(dumdata)],Y)
+
+
+ytrain<-dumdata$Y
+xtrain<-dumdata[,-c(ncol(dumdata))]
+outdata<-ubOver(X=xtrain,Y=ytrain)
+
+datafinale<-as.data.frame(outdata)
+set.seed(123) 
+train.data  <- split_data(datafinale, 1)
+test.data   <- split_data(datafinale, 0)
+classifier <- function(train.data, test.data)
+{
+  result.frame  <- data.frame(model.name = as.character(), TP=numeric(), FN=numeric(), FP=numeric(),
+                              TN= numeric(),SENSITIVITY=numeric(),SPECITICITY=numeric(),
+                              ACCURACY=numeric(),AUC=numeric())
+  
+  tree.model <- rpart(Y~., data = train.data, method = "class")
+  result.frame <- rbind(result.frame, predict.auc("decison.tree", tree.model, test.data))
+  
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  result.frame <- rbind(result.frame, predict.auc("random.forest", random.model, test.data))
+  
+  logit.model <- glm(Y~., data = train.data, family = binomial(link = "logit"))
+  result.frame <- rbind(result.frame, predict.auc("logistic.regrr", logit.model, test.data, 1))
+  
+  neural.model <- neuralNetwork(train.data, test.data)
+  result.frame <- rbind(result.frame, neural.model)
+  
+  svm.model <- ksvm(as.factor(Y)~., data = train.data, scaled = TRUE, prob.model = T)
+  result.frame <- rbind(result.frame, predict.auc("svm", svm.model, test.data, 3))
+  
+  knn.model <- knn(train.data, test.data, as.factor(train.data$Y), k = 5)
+  result.frame <- rbind(result.frame, predict.auc("knn.model", knn.model, test.data, 4))
+  
+  return(result.frame)
+}
+
+neuralNetwork  <- function(train.data, test.data)
+{
+  total.data <- rbind(train.data, test.data)
+  
+  maxs <- apply(total.data, 2, max)
+  mins <- apply(total.data, 2, min)
+  scaled <- as.data.frame(scale(total.data, center = mins, scale = maxs - mins))
+  
+  train.data <- split_data(total.data, 1)
+  test.data  <- split_data(total.data, 0)
+  
+  cName <- names(train.data)
+  formula <- as.formula(paste("Y~", paste(cName[!cName %in% "Y"], collapse = " + ")))
+  
+  neural.model <- neuralnet(formula, data = train.data, hidden = c(5, 3), linear.output = FALSE, stepmax = 1000000)
+  neural.metric <- predict.auc("neural.network",  neural.model, test.data, 2)
+  
+  return(neural.metric)
+}
+
+predict.auc <- function(model.name, model, test.data, algo.flag = 0)
+{
+  target.attr <- ncol(test.data) -1
+  if(algo.flag == 1)
+  {
+    pred  <- predict(model, test.data, type = "response")
+    pred <- as.vector(ifelse(pred > 0.5, 1, 0))
+    
+  }else if(algo.flag == 2)
+  {
+    pred <- compute(model, test.data[,1:target.attr])
+    pred <- as.factor(round(pred$net.result))
+    
+    print(pred)
+    
+  }else if(algo.flag == 3)
+  {
+    pred  <- predict(model, test.data)
+  }else if(algo.flag == 4)
+  {
+    pred <- model
+  }else
+  {
+    pred  <- predict(model, test.data, type = "class")
+  }
+  print(model.name)
+  
+  confMatrix <- confusionMatrix(table(pred,test.data$Y))
+  
+  TP <- confMatrix$table[[4]]
+  FN <- confMatrix$table[[3]]
+  TN <- confMatrix$table[[1]]
+  FP <- confMatrix$table[[2]]
+  
+  SENSITIVITY <- confMatrix$byClass[[1]]
+  SPECITICITY <- confMatrix$byClass[[2]]
+  ACCURACY    <- confMatrix$overall[[1]]
+  AUC         <- (SENSITIVITY + SPECITICITY)/2
+  
+  result <- data.frame(model.name, TP, FN, FP, TN, SENSITIVITY, SPECITICITY, ACCURACY, AUC)
+  return(result)
+}
+kFold_VAl_Calssifier <-  function(total.data)
+{
+  total.data[["Y"]] <- as.factor(total.data[["Y"]])
+  pr <- sperrorest::partition_cv_strat(data=total.data, strat = "Y", nfold = 10, repetition=1)
+  
+  result.frame  <- data.frame(model.name = as.character(), TP=numeric(), FN=numeric(), FP=numeric(),
+                              TN= numeric(),SENSITIVITY=numeric(),SPECITICITY=numeric(),
+                              ACCURACY=numeric(),AUC=numeric())
+  
+  for (k in 1:10) 
+  {
+    print(paste("iteration.no = ", k))
+    train.Indx <- pr[["1"]][[k]]$train
+    test.Indx  <- pr[["1"]][[k]]$test
+    
+    train.data <- total.data[train.Indx, ]
+    test.data  <- total.data[test.Indx,  ]
+    
+    result.frame <- rbind(result.frame, classifier2(train.data, test.data))
+  }
+  result.frame <- result.frame %>% group_by(model.name) %>%
+    summarise(TP = mean(TP),
+              FN = mean(FN),
+              FP = mean(FP),
+              TN = mean(TN),
+              sensitivity = mean(SENSITIVITY),
+              specificity = mean(SPECITICITY),
+              accuracy = mean(ACCURACY),
+              auc = mean(AUC))
+  return(result.frame)
+}
+try=test.data[1,]
+for (i in 1:length(try)){
+  try[1,i]=0
+}
+shinyServer(function(input,output){
+  
+  
+  
+
+
+  output$table1<-DT::renderDataTable({
+  
+   datagraph
+  })
+  output$value <- shinydashboard::renderValueBox({
+
+    
+    shinydashboard::valueBox(
+      value = tags$p("Nombre D'observation", style = "font-size: 70%;"),
+      subtitle = tags$p("1000", style = "font-size: 80%;"),
+      color = "green"
+    )
+  })
+  output$value2 <- shinydashboard::renderValueBox({
+    
+    shinydashboard::valueBox(
+      value = tags$p("Nombre D'attributs", style = "font-size: 70%;"),
+      subtitle = tags$p("16", style = "font-size: 90%;"),
+      color = "red"
+    )
+  })
+  output$resume<-renderPrint({
+   
+    summary(datagraph)
+  })
+  
+  output$plot2<-renderPlotly({
+    x = unlist(data1[,input$quanti])
+    p <- plot_ly(y = ~x, type = "box",line = list(color = "green"))%>%layout(title = names(data1[,input$quanti]))
+  })
+  output$p1<-renderPlotly({
+    x = unlist(data1[,input$quanti])
+    fit <- density(x)
+    plot_ly(x = x, type = "histogram", name = "Histogram") %>% 
+      add_trace(x = fit$x, y = fit$y,type='scatter' ,mode = "lines", fill = "tozeroy", yaxis = "y2", name = "Density") %>% 
+      layout(title=names(data1[,input$quanti]),yaxis2 = list(overlaying = "y", side = "right"))
+  })
+  output$statdes=renderText({
+    summary(data1[,input$quanti])
+  })
+  
+  output$plot1<-renderPlotly({
+    x=c("blue", "red", "green", "yellow", "brown",
+        "black","orange","purple", "grey",
+        "chocolate", "coral", "cornflowerblue","pink")
+    inp=input$quali
+    tab<-as.data.frame(table(datagraph[,input$quali],dnn =names(datagraph[,input$quali]) ))
+    color <- factor(tab[,1], labels = x[1:nrow(tab)])
+    
+    fig <- plot_ly(
+      x = tab[,1],
+      y = tab[,2],
+      name = "SF Zoo",
+      type = "bar",
+      marker = list(color = ~color)
+      
+    )
+    
+    fig
+  })
+  output$t1<-renderTable({
+    unlist(table(datagraph[,input$quali],dnn =names(datagraph[,input$quali]) ))
+  },striped = TRUE,bordered = TRUE,spacing = "xs")
+  
+ output$try<-renderText({
+   
+   if(input$quali=="Motif"){
+HTML(" There were a sparse level in this variable.So i grouped 4 categories(Appareil elecromeneger,Recyclage,Réparation,Autre) into one category called 'Autre'.
+The 2 categories(Education,Projet) into one variable called 'Education/projet'.Plus,The two categories 'Voiture d'occasion'et 'voiture nouvelle' into one category called 'Voiture'"
+)  }else if(input$quali=="Solde du compte courant"){
+  
+  HTML("There were a sparse level in this variable.So i grouped 2 categoris (between 0 and 200,More than 200) into one called 'More than 0' ")
+}
+  
+   else if(input$quali=="Compte d'épargne / obligations"){
+    HTML("There were a sparse level in this variable.So i grouped 3 categoris(between 100 and 500,between 500 and 1000,More than 1000)into one category called 'More than 1000'")
+   }
+   else if (input$quali=="Statut personnel et sexe"){
+     
+     HTML("So since there was no 'Femme:Célibataire' and a large sparse in the variable level i divided this variable into two categories 'Femme' and 'Homme' ")
+     
+   }
+     
+     
+     
+     
+   
+   
+   
+ })
+ output$corr<-renderPlotly({
+   datn = data1[,c(2,5,10,11,13,15,16,8,9)]
+   
+   mycor = cor(datn)
+   heatmaply(mycor, k_col = 2, k_row = 3) %>% layout(margin = list(l = 130, b = 40))
+   
+ })
+ output$biplot1<-renderPlotly({
+
+   plot_ly(y = ~unlist(datagraph[,input$quanti5]), x = ~unlist(datagraph[,input$quali5]), type = "box",line = list(color = "#FF7F24"))%>%layout(title = names(datagraph[,input$bi1]),xaxis = list(title = 'Good'))
+ })
+ output$ploting<-renderPlotly({
+   Variable <- unlist(datagraph[,input$bi1])
+   Variable2<- unlist(datagraph[,input$new])
+   fig <- plot_ly(data = datagraph, x = ~Variable, y = ~Variable2)
+   
+   fig
+ })
+ output$test1<-renderTable({
+   Variable <- unlist(datagraph[,input$bi2])
+   Variable2 <- unlist(datagraph[,input$new2])
+   
+   unlist(chisq.test(Variable,unlist(datagraph[,input$new2]))[c(1,2,3,4)])
+ },striped = TRUE,bordered = TRUE,rownames = TRUE,spacing = "s")
+ 
+ output$test<-renderTable({
+   Variable <- unlist(data1[,input$quanti5])
+   Variable2 <- unlist(data1[,input$quali5])
+   unlist(t.test(Variable2,Variable))
+ },striped = TRUE,bordered = TRUE,rownames = TRUE,spacing = "xs") 
+ output$biplot2<-renderPlotly({
+   variable <- unlist(datagraph[,input$bi2])
+   variable2 <- unlist(datagraph[,input$new2])
+   p=ggplot(datagraph, aes(factor(unlist(datagraph[,input$new2])), fill = factor(variable))) +geom_bar(position = "dodge")+xlab("variable2")+ylab("Count") +
+     ggtitle(names(datagraph[,input$bi2]))
+   ggplotly(p)
+ })
+ output$tc<-renderPrint({
+   v=as.matrix(datagraph[,input$bi2])
+   v2=as.matrix(datagraph[,input$new2])
+   table(as.matrix(datagraph[,input$bi2]), as.matrix(datagraph[,input$new2]))
+   
+ })
+ output$tc2<-renderPlot({
+   v=as.matrix(datagraph[,input$bi2])
+   v2=as.matrix(datagraph[,input$new2])
+ tab=  table(as.matrix(datagraph[,input$bi2]), as.matrix(datagraph[,input$new2]))
+ mosaicplot(tab, las = 3, shade = TRUE)
+ 
+ })
+ output$Mpie<-renderPlotly({
+   
+  variable<- input$quali
+  tab<-as.data.frame(table(datagraph[,variable]))
+   fig <- plot_ly(tab, labels = tab$Var1, values = tab$Freq, type = 'pie')
+  
+   fig
+   
+ })
+output$tya<-renderPlot({
+  library(pROC)
+  tree.model <- rpart(Y~., data = train.data, method = "class")
+  rf_prediction <- predict(tree.model, test.data, type = "prob")
+  ROC_rf <- roc(test.data$Y, rf_prediction[,2])
+  rf_prediction2 <- predict(tree.model, train.data, type = "prob")
+  
+  ROC_rf2 <- roc(train.data$Y, rf_prediction2[,2])
+  ROC_rf_auc <- auc(ROC_rf)
+  
+  ROC_rf_auc2 <- auc(ROC_rf2)
+  plot(ROC_rf, col = "purple", main = "ROC For Decision tree on the train data(pink) Vs Test data(purple)")
+  lines(ROC_rf2, col = "pink")
+ 
+  
+  text(x=0.2,y=0.3,paste("Accuracy % on the test data ",round( mean(test.data$Y== round(rf_prediction[,2]))*100,2)),col ="purple")
+  text(x=0.2,y=0.2,paste("Accuracy % on the train ", round(mean(train.data$Y== round(rf_prediction2[,2]))*100,2))
+       ,col ="pink")
+  text(x=0.2,y=0.1,paste("Area under curve for the test data ", round(ROC_rf_auc*100,2))
+       ,col ="purple")
+  text(x=0.2,y=0.0,paste("Area under curve forthe train ", round(ROC_rf_auc2*100,2))
+       ,col ="pink")
+  
+})
+##Modeling
+output$arbre<-renderPlot({model_ar2 <- rpart(Y~., data = datafinale, method = "class")
+
+prp(model_ar2,type=2,extra=1)})
+output$logit<-renderPlot({
+  logit.model <- glm(Y~., data = train.data, family = binomial(link = "logit"))%>%
+    stepAIC(direction='forward',trace = FALSE)
+  rf_prediction <- predict(logit.model, test.data, type = "response")
+  rf_prediction<- as.vector(ifelse(rf_prediction> 0.5, 1, 0))
+  
+  ROC_rf <- roc(test.data$Y, rf_prediction)
+  rf_prediction2 <- predict(logit.model, train.data, type = "response")
+  rf_prediction2<- as.vector(ifelse(rf_prediction2> 0.5, 1, 0))
+  ROC_rf2 <- roc(train.data$Y, rf_prediction2)
+  ROC_rf_auc <- auc(ROC_rf)
+  
+  ROC_rf_auc2 <- auc(ROC_rf2)
+  plot(ROC_rf, col = "green", main = "ROC For Logistic regression on the train data(pink) Vs Test data(purple)")
+  lines(ROC_rf2, col = "red")
+  
+  text(x=0.2,y=0.3,paste("Accuracy % on the test data ",round( mean(test.data$Y== round(rf_prediction))*100,2)),col ="blue")
+  text(x=0.2,y=0.2,paste("Accuracy % on the train ", round(mean(train.data$Y== round(rf_prediction2))*100,2))
+       ,col ="red")
+  text(x=0.2,y=0.1,paste("Area under curve for the test data ", round(ROC_rf_auc*100,2))
+       ,col ="green")
+  text(x=0.2,y=0.0,paste("Area under curve forthe train ", round(ROC_rf_auc2*100,2))
+       ,col ="green")
+})
+output$resum<-renderTable({
+  logit<- glm(Y~., data = train.data, family = binomial(link = "logit"))%>%
+    stepAIC(direction='both',trace = FALSE)
+  
+  summary(logit)$coefficients
+},striped = TRUE,bordered = TRUE,rownames = TRUE,spacing = "xs")
+output$rand<-renderPlot({
+  
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rf_prediction <-  predict(random.model , test.data, type = "class")
+  
+  ROC_rf <- roc(test.data$Y,(as.numeric( rf_prediction)-1.00)/abs(2.00-1.00))
+  rf_prediction2 <- predict(random.model, train.data, type = "response")
+  ROC_rf2 <- roc(train.data$Y, as.numeric(as.matrix(rf_prediction2)))
+  ROC_rf_auc <- auc(ROC_rf)
+  
+  ROC_rf_auc2 <- auc(ROC_rf2)
+  plot(ROC_rf, col = "purple", main = "ROC For RANDOM fOREST on the train data(pink) Vs Test data(purple)")
+  lines(ROC_rf2, col = "pink")
+  
+  confMatrix <- confusionMatrix(table(rf_prediction,test.data$Y))
+  
+  TP <- confMatrix$table[[4]]
+  FN <- confMatrix$table[[3]]
+  TN <- confMatrix$table[[1]]
+  FP <- confMatrix$table[[2]]
+  SENSITIVITY <- confMatrix$byClass[[1]]
+  SPECITICITY <- confMatrix$byClass[[2]]
+  ACCURACY    <- confMatrix$overall[[1]]
+  AUC         <- (SENSITIVITY + SPECITICITY)/2
+  text(x=0.2,y=0.3,paste("Accuracy % on the test data ",round( mean(test.data$Y== rf_prediction)*100,2)),col ="purple")
+  text(x=0.2,y=0.2,paste("Accuracy % on the train ", round(mean(train.data$Y== rf_prediction2)*100,2))
+       ,col ="pink")
+  text(x=0.2,y=0.1,paste("Area under curve for the test data ", round(AUC*100,2))
+       ,col ="purple")
+  text(x=0.2,y=0.0,paste("Area under curve forthe train ", round(ROC_rf_auc2*100,2))
+       ,col ="pink")
+})
+output$resumx<-renderPrint({
+  randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  
+})
+output$int2<-renderPrint({ " Calculate the AUC Confidence Interval."})
+output$int<-renderPrint({
+
+  
+  pROC::ci.auc(test.data$Y, (as.numeric( rf_prediction)-1.00)/abs(2.00-1.00))
+})
+output$tab<-DT::renderDataTable({
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rn <- round(randomForest::importance(random.model), 2)
+  as.data.frame(rn[order(rn[,3], decreasing=TRUE),])
+})
+output$oui<-renderPlotly({
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rn <- round(randomForest::importance(random.model), 2)
+  t=as.data.frame(rn[order(rn[,3], decreasing=TRUE),])
+  
+  fig <- plot_ly(data = t, x = ~MeanDecreaseAccuracy, y = ~rownames(t))
+  
+  fig
+})
+output$oui2<-renderPlotly({
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rn <- round(randomForest::importance(random.model), 2)
+  t=as.data.frame(rn[order(rn[,3], decreasing=TRUE),])
+  
+  fig <- plot_ly(data = t, x = ~MeanDecreaseGini, y = ~rownames(t))
+  
+  fig
+})
+##RNN
+output$plot_rn<-renderPlot({
+ 
+  Neural<- nnet(Y~ .,data = train.data,size=10,maxit=500,decay=.001, linout=F, trace = F)
+  
+  fitNeural_train <- predict(Neural,
+                             newdata=train.data)
+  prednn_train = ROCR::prediction( fitNeural_train, train.data$Y)
+  perfnn_train <- ROCR::performance(prednn_train, "tpr", "fpr")
+  auc_train_nn=ROCR::performance(prednn_train,measure="auc")
+  
+  fitNeural <- predict(Neural,
+                       newdata=test.data)
+  prednn = ROCR::prediction( fitNeural, test.data$Y)
+  perfnn <- ROCR::performance(prednn, "tpr", "fpr")
+  auc_test_nn=ROCR::performance(prednn,measure="auc")
+  auc_test_nn
+  
+  plot(perfnn_train,col="red",print.cutoffs.at=seq(0,1,by=0.25),lwd=3)
+  abline(0,1,lty=3)
+  par(new=TRUE)
+  plot(perfnn,col="green",print.cutoffs.at=seq(0,1,by=0.25),lwd=3)
+  abline(0,1,lty=3)
+  
+  text(x=0.9,y=0.2,paste("auc(train)=",round(auc_train_nn@y.values[[1]],digits = 3)),col ="red")
+  text(x=0.9,y=0.1,paste("auc(test)=",round(auc_test_nn@y.values[[1]],digits = 3)),col ="green")
+  
+  
+  
+})
+
+output$plotnn<-renderPlot({
+ 
+  Neural<- nnet(Y~ .,data = train.data,size=10,maxit=500,decay=.001, linout=F, trace = F)
+ plot(Neural,col = "red")
+})
+
+#SVM
+
+
+
+output$svm<-renderPlot({
+  svm.model <- ksvm(as.factor(Y)~., data = train.data, scaled = TRUE, prob.model = T, cost = 1)
+  rf_prediction <- predict(svm.model , test.data)
+  ROC_rf <- roc(test.data$Y, as.numeric(as.matrix(rf_prediction)))
+  
+  rf_prediction2 <- predict(svm.model, train.data, type = "prob")
+  rf_prediction2<- as.vector(ifelse(rf_prediction2[,2]> 0.5, 1, 0))
+  ROC_rf2 <- roc(train.data$Y,as.numeric(as.matrix(rf_prediction2)))
+  ROC_rf_auc <- auc(ROC_rf)
+  
+  ROC_rf_auc2 <- auc(ROC_rf2)
+  plot(ROC_rf, col = "purple", main = "ROC For svm on the train data(pink) Vs Test data(purple)")
+  lines(ROC_rf2, col = "pink")
+  
+  
+  text(x=0.2,y=0.3,paste("Accuracy % on the test data ",round( mean(test.data$Y== rf_prediction)*100,2)),col ="purple")
+  text(x=0.2,y=0.2,paste("Accuracy % on the train ", round(mean(train.data$Y== rf_prediction2)*100,2))
+       ,col ="pink")
+  text(x=0.2,y=0.1,paste("Area under curve for the test data ", round(ROC_rf_auc*100,2))
+       ,col ="purple")
+  text(x=0.2,y=0.02,paste("Area under curve for the train data ", round(ROC_rf_auc2*100,2))
+       ,col ="pink")
+})
+output$svm2<-renderPrint({
+  svm.model <- ksvm(as.factor(Y)~., data = train.data, scaled = TRUE, prob.model = T, cost = 1)
+  svm.model
+})
+
+output$svm3<-renderPrint({
+  tune.out <- e1071::tune.svm(as.factor(Y)~., data = train.data, kernel = "linear",
+                              list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
+  tune.out$best.model  
+})
+
+output$knn<-renderPlot({
+  knn.model <- knn(train.data, test.data, as.factor(train.data$Y), k = 5)
+  rf_prediction <- knn.model
+  ROC_rf <- roc(test.data$Y, as.numeric(as.matrix(rf_prediction)))
+  
+  rf_prediction2 <- knn(train.data, train.data, as.factor(train.data$Y), k = 5)
+  ROC_rf2 <- roc(train.data$Y,as.numeric(as.matrix(rf_prediction2)))
+  ROC_rf_auc <- auc(ROC_rf)
+  
+  ROC_rf_auc2 <- auc(ROC_rf2)
+  plot(ROC_rf, col = "purple", main = "ROC For Knn on the train data(pink) Vs Test data(purple)")
+  lines(ROC_rf2, col = "pink")
+  
+  
+  text(x=0.2,y=0.3,paste("Accuracy % on the test data ",round( mean(test.data$Y== rf_prediction)*100,2)),col ="purple")
+  text(x=0.2,y=0.2,paste("Accuracy % on the train ", round(mean(train.data$Y== rf_prediction2)*100,2))
+       ,col ="pink")
+  text(x=0.2,y=0.1,paste("Area under curve for the test data ", round(ROC_rf_auc*100,2))
+       ,col ="purple")
+  text(x=0.2,y=0.02,paste("Area under curve for the train data ", round(ROC_rf_auc2*100,2))
+       ,col ="pink")
+})
+output$compare<-renderPlot({
+  knn.model <- knn(train.data, test.data, as.factor(train.data$Y), k = 5)
+  rf_prediction <- knn.model
+  
+  ROC_rf <- roc(test.data$Y, as.numeric(as.matrix(rf_prediction)))
+  
+  svm.model <- ksvm(as.factor(Y)~., data = train.data, scaled = TRUE, prob.model = T, cost = 1)
+  rf_prediction2 <- predict(svm.model , test.data)
+  ROC_rf2 <- roc(test.data$Y, as.numeric(as.matrix(rf_prediction2)))
+  
+  
+  Neural<- nnet(Y~ .,data = train.data,size=10,maxit=500,decay=.001, linout=F, trace = F)
+  
+  fitNeural_train <- predict(Neural,test.data) 
+  fitNeural_train<- as.vector(ifelse(fitNeural_train> 0.5, 1, 0))
+  
+  ROC_rf3 <- roc(test.data$Y, as.numeric(as.matrix(fitNeural_train)))
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rf_prediction4 <-  predict(random.model , test.data, type = "class")
+  
+  ROC_rf4 <- roc(test.data$Y,(as.numeric( rf_prediction4)-1.00)/abs(2.00-1.00))
+  
+  logit.model <- glm(Y~., data = train.data, family = binomial(link = "logit"))%>%
+    stepAIC(direction='forward',trace = FALSE)
+  rf_prediction5 <- predict(logit.model, test.data, type = "response")
+  rf_prediction5<- as.vector(ifelse(rf_prediction5> 0.5, 1, 0))
+  
+  ROC_rf5 <- roc(test.data$Y, rf_prediction5)
+  
+  tree.model <- rpart(Y~., data = train.data, method = "class")
+  rf_prediction6 <- predict(tree.model, test.data, type = "prob")
+  ROC_rf6 <- roc(test.data$Y, rf_prediction6[,2])
+  
+  plot(ROC_rf, col = "purple", main = "Comparing diffrent models")
+  lines(ROC_rf2, col = "red")
+  lines(ROC_rf3, col = "brown")
+  lines(ROC_rf4, col = "green")
+  lines(ROC_rf5, col = "pink")
+  lines(ROC_rf6, col = "blue")
+  
+  
+  legend("bottomright", legend=c("Knn model", "svm.model","Neural","random Forest","logit","tree decison"),
+         col=c("purple","red","brown","green","pink", "blue"), lty=1, cex=1)
+  
+})
+
+
+output$compare2<-DT::renderDataTable({
+  model.class <- classifier(train.data, test.data)
+  model.class
+})
+output$compare3<-DT::renderDataTable({
+  kFold_VAl_Calssifier(datafinale)
+})
+
+output$statut<-shinydashboard::renderValueBox({
+  try[1,1]=log1p(input$`2`)
+  try[1,2]=log1p(input$`5`)
+  try[1,3]=input$`9`
+  try[1,4]=log1p(input$`10`)
+  try[1,5]=input$`12`
+  try[1,6]=input$`14`
+  ##solde
+  if(input$`1`=="supérieur 0"){
+    try[1,7]=1
+    try[1,8]=0
+  } else if (input$`1`=="pas de compte courant"){try[1,8]=1
+  try[1,7]=0}else{
+    try[1,7]=0
+    try[1,8]=0
+  }
+  
+  ##Historique
+  if(input$`3`=="aucun crédit pris / tous les crédits remboursés"){
+    try[1,9]=1
+    try[1,10]=0
+    try[1,11]=0
+    try[1,12]=0
+  } else if (input$`3`=="compte critique / autres crédits existants (pas dans cette banque)"){
+    try[1,9]=0
+    try[1,10]=1
+    try[1,11]=0
+    try[1,12]=0}
+  else if (input$`3`=="crédits déjà remboursés jusqu'à maintenant"){
+    try[1,9]=0
+    try[1,10]=0
+    try[1,11]=1
+    try[1,12]=0}
+  else if (input$`3`=="retard dans le paiement dans le passé"){
+    try[1,9]=0
+    try[1,10]=0
+    try[1,11]=0
+    try[1,12]=1}
+  else{
+    try[1,9]=0
+    try[1,10]=0
+    try[1,11]=0
+    try[1,12]=1
+  }
+  ##Motif
+  
+  if(input$`4`=="fourniture/équipement"){
+    try[1,13]=1
+    try[1,14]=0
+    try[1,15]=0
+    try[1,16]=0
+    
+  } else if (input$`4`=="Projet/Education"){
+  try[1,13]=0
+  try[1,14]=1
+  try[1,15]=0
+  try[1,16]=0}
+  else if (input$`4`=="Télévision"){
+    try[1,13]=0
+    try[1,14]=0
+    try[1,15]=1
+    try[1,16]=0}
+  else if (input$`4`=="Voiture"){ try[1,13]=0
+  try[1,14]=0
+  try[1,15]=0
+  try[1,16]=1}
+  else{
+    try[1,13]=0
+    try[1,14]=0
+    try[1,15]=0
+    try[1,16]=0
+  }
+  ##Compte epargne
+  if(input$`6`=="Pas de compte épargne"){
+    try[1,17]=1
+    try[1,18]=0
+  } else if (input$`6`=="superieur a 100"){try[1,17]=0
+  try[1,18]=1}else{
+    try[1,17]=0
+    try[1,18]=0
+  }
+  
+  ##occ depuis
+  
+  if(input$`7`=="entre 1 ans  et 4ans"){
+    try[1,19]=1
+    try[1,20]=0
+    try[1,21]=0
+    try[1,22]=0
+    
+  } else if (input$`7`=="entre 4ans et 7ans"){  
+    try[1,19]=0
+    try[1,20]=1
+    try[1,21]=0
+    try[1,22]=0}else if (input$`7`=="inferieur 1ans"){
+      try[1,19]=0
+      try[1,20]=0
+      try[1,21]=1
+      try[1,22]=0}
+  else if (input$`7`=="supérieur 7ans"){
+    try[1,19]=0
+    try[1,20]=0
+    try[1,21]=0
+    try[1,22]=1}
+  
+  else{
+    try[1,19]=0
+    try[1,20]=0
+    try[1,21]=0
+    try[1,22]=0
+  }
+  ##sexe
+  if(input$`8`=="Homme"){
+    try[1,23]=1
+    
+  }else{
+    try[1,23]=0
+  }
+  ##logement
+  
+  if(input$`11`=="Gratuitement"){
+    try[1,24]=1
+    try[1,24]=0
+  } else if (input$`11`=="Locataire"){
+    try[1,24]=0
+    try[1,25]=1}else{
+      try[1,24]=0
+      try[1,25]=0
+    }
+  ##Emploi
+  
+  
+  if(input$`13`=="Manager/Indépendant/Ouvrier Qualifié"){
+    try[1,26]=1
+    try[1,27]=0
+    try[1,28]=0
+    
+    
+  } else if (input$`13`=="non qualifié - résident"){   
+    try[1,26]=0
+    try[1,27]=1
+    try[1,28]=0
+  }else if (input$`13`=="sans emploi / non qualifié - non-résident"){      try[1,26]=0
+  try[1,27]=0
+  try[1,28]=1
+  }
+  
+  else{
+    try[1,26]=0
+    try[1,27]=0
+    try[1,28]=0
+    
+  }
+  #bou
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rf_prediction <-  predict(random.model , try, type = "class")
+  if (as.matrix(rf_prediction)[,1]==0){ shinydashboard::valueBox(
+    "Ce client n'est pas solvable",
+    as.matrix(rf_prediction)[,1],
+    icon = icon("credit-card"),
+    color="red"
+  )}else{
+    shinydashboard::valueBox(
+      "Ce client est solvable",
+      as.matrix(rf_prediction)[,1],
+      icon = icon("credit-card"),
+      color="green"
+    )
+  }
+ 
+  
+  
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+output$tajrba<-renderPrint({
+  try[1,1]=input$`2`
+  try[1,2]=input$`5`
+  try[1,3]=input$`9`
+  try[1,4]=input$`10`
+  try[1,5]=input$`12`
+  try[1,6]=input$`14`
+  ##solde
+  if(input$`1`=="supérieur 0"){
+    try[1,7]=1
+    try[1,8]=0
+  } else if (input$`1`=="pas de compte courant"){try[1,8]=1
+  try[1,7]=0}else{
+    try[1,7]=0
+    try[1,8]=0
+  }
+  
+  ##Historique
+  if(input$`3`=="compte critique / autres crédits existants (pas dans cette banque)"){
+    try[1,9]=0
+    try[1,10]=0
+  } else if (input$`3`=="retard dans le paiement dans le passé"){
+    try[1,10]=1
+  try[1,9]=0}
+ 
+  else{
+    try[1,9]=1
+    try[1,10]=0
+  }
+  ##Motif
+  
+  if(input$`4`=="fourniture/équipement"){
+    try[1,11]=1
+    try[1,12]=0
+    try[1,13]=0
+    try[1,14]=0
+    
+  } else if (input$`4`=="Projet/Education"){try[1,11]=0
+  try[1,12]=1
+  try[1,13]=0
+  try[1,14]=0}else if (input$`4`=="Télévision"){try[1,11]=0
+  try[1,12]=0
+  try[1,13]=1
+  try[1,14]=0}
+  else if (input$`4`=="Voiture"){try[1,11]=0
+  try[1,12]=0
+  try[1,13]=0
+  try[1,14]=1}
+ else{
+   try[1,11]=0
+   try[1,12]=0
+   try[1,13]=0
+   try[1,14]=0
+  }
+  ##Compte epargne
+  if(input$`6`=="Pas de compte épargne"){
+    try[1,15]=1
+    try[1,16]=0
+  } else if (input$`6`=="superieur a 100"){try[1,15]=0
+  try[1,16]=1}else{
+    try[1,15]=0
+    try[1,16]=0
+  }
+  
+  ##occ depuis
+  
+  if(input$`7`=="entre 1 ans  et 4ans"){
+    try[1,17]=1
+    try[1,18]=0
+    try[1,19]=0
+    try[1,20]=0
+    
+  } else if (input$`7`=="entre 4ans et 7ans"){  
+    try[1,17]=0
+  try[1,18]=1
+  try[1,19]=0
+  try[1,20]=0}else if (input$`7`=="inferieur 1ans"){
+    try[1,17]=0
+    try[1,18]=0
+    try[1,19]=3
+    try[1,20]=0}
+  else if (input$`7`=="supérieur 7ans"){
+    try[1,17]=0
+    try[1,18]=0
+    try[1,19]=0
+    try[1,20]=1}
+  
+  else{
+    try[1,17]=0
+    try[1,18]=0
+    try[1,19]=0
+    try[1,20]=0
+  }
+  ##sexe
+  if(input$`8`=="Homme"){
+    try[1,21]=1
+     
+  }else{
+    try[1,21]=0
+  }
+  ##logement
+  
+  if(input$`11`=="Gratuitement"){
+    try[1,22]=1
+    try[1,23]=0
+  } else if (input$`11`=="Locataire"){
+    try[1,22]=0
+  try[1,23]=1}else{
+    try[1,22]=0
+    try[1,23]=0
+  }
+  ##Emploi
+ 
+  
+  if(input$`13`=="Manager/Indépendant/Ouvrier Qualifié"){
+    try[1,24]=1
+    try[1,25]=0
+    try[1,26]=0
+    
+    
+  } else if (input$`13`=="non qualifié - résident"){   
+  try[1,24]=0
+  try[1,25]=1
+  try[1,26]=0
+  }else if (input$`13`=="sans emploi / non qualifié - non-résident"){    try[1,24]=1
+  try[1,25]=0
+  try[1,26]=1
+  }
+
+  else{
+    try[1,24]=1
+    try[1,25]=0
+    try[1,26]=0
+    
+  }
+  
+  random.model <- randomForest(as.factor(Y)~., data = train.data, ntree = 500, mtry = 4,importance = TRUE, 
+                               replace = T)
+  rf_prediction <-  predict(random.model , test.data[1,], type = "class")
+  
+  as.matrix(rf_prediction)[,1]
+  
+  
+  
+
+  
+})
+  
+})

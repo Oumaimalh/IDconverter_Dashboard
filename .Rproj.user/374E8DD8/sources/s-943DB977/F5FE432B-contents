@@ -1,0 +1,246 @@
+library("readxl")
+library(LaplacesDemon)
+library(ROSE)
+library(tidyverse)
+library(gridExtra)
+library(plyr)
+library(pROC)
+library(knitr)
+library(caret)
+library(caTools)
+library(DMwR)
+library(plotly)
+library(corrplot)
+library(heatmaply)
+library(fBasics, quietly=TRUE)
+library("FactoMineR")
+library("factoextra")
+library(reshape)
+library(fastDummies)
+library(unbalanced)
+library(lattice)
+library(ggplot2)
+library(caret)
+library(gplots)
+library(ROCR)
+library(dplyr)
+library(rpart)
+library("grid")
+library("MASS")
+library("neuralnet")
+library(kernlab)
+library(randomForest)
+library(class)
+library(sperrorest)
+library(rpart)
+library(broom)
+library(shiny)
+library(shinydashboard)
+library(DT)
+library(rpart.plot)
+library(nnet)
+library(e1071)
+data1<-read_excel("Gerdata.xls")
+
+shinyUI(
+  
+  dashboardPage(skin="yellow",
+    dashboardHeader(title="German credit scoring "),
+    dashboardSidebar(sidebarMenu(
+      menuItem("Problem definition" ,icon = icon("dashboard")),
+      menuItem("Data Exploration" ,icon = icon("dashboard"),
+               menuSubItem("About the data",tabName = "P1" )
+               ),
+      menuItem("Univariate Analysis" ,icon = icon("dashboard"),
+               menuSubItem("quantitative",tabName = "PP1" ),
+               menuSubItem("qualitative",tabName = "PP2" )
+      ),
+      menuItem("Bivariate Analysis" ,icon = icon("dashboard"),
+               menuSubItem("quantitative",tabName = "PP3" ),
+               menuSubItem("qualitative",tabName = "PP4" ),
+               menuSubItem("qualitative~quantitative",tabName = "PP5" )
+      ),
+    
+      menuItem("Forcasting" ,icon = icon("dashboard"),
+               menuSubItem("Decision tree",tabName = "B1"),
+               menuSubItem("Logistic Reg",tabName = "B2"),
+               menuSubItem("RandomForest",tabName = "B3"),
+               menuSubItem("Reseau de neurone",tabName = "B4"),
+               menuSubItem("Support Vector machine",tabName = "B5"),
+            
+               menuSubItem("k-nearest neighbors",tabName = "B6")
+               ),
+      menuItem("Comparing Forcasting" ,icon = icon("dashboard"),tabName = "B7"),
+      menuItem("Forms" ,icon = icon("dashboard"),tabName = "B8")
+      
+    )
+      
+    ),
+    dashboardBody(tabItems(tabItem(tabName = "P1",
+                                   fluidRow(shinydashboard::valueBoxOutput("value",width = 4),shinydashboard::valueBoxOutput("value2",width = 4)),
+                                   fluidRow(
+                                   tabBox(title='Credit german ',
+                                          tabPanel("table", DT::dataTableOutput("table1",width = "50%")
+                                          ),tabPanel("Summary", verbatimTextOutput("resume")
+                                          ),width=15))
+                                   ),
+                           tabItem(tabName = "PP1",
+                                   fluidRow(
+                                  
+                                     tabPanel("Variables Quantitatives", 
+                                              sidebarPanel(
+                                                selectInput("quanti","Choisir le log1p d'une variable Quantitative",
+                                                            choices=c(colnames(data1[c(5,11,2,10,13,15)]))),
+                                                h3("Resume Statistique :"),
+                                                textOutput("statdes"),
+                                                h4("Box plot : "),
+                                                plotlyOutput("plot2")
+                                                
+                                              ),
+                                              mainPanel(
+                                                
+                                                plotlyOutput("p1")
+                                                
+                                              ),width=15),width=15,height = 15
+                                     
+                                     
+                                   )),
+                           tabItem(tabName = "PP2",
+                                   fluidRow(
+                           tabPanel("Variables Qualitatives",
+                                    sidebarPanel(
+                                      selectInput("quali","Choisir une variable Qualitative",choices=c(colnames(data1[-c(5,11,2,10,13,15)]))),
+                                      htmlOutput("try"),
+                                      tableOutput("t1")
+                                    ),
+                                    mainPanel(
+                                      tabBox(title='Visualisation',
+                                             tabPanel("Barplot", plotlyOutput("plot1")),
+                                             tabPanel("Pie",plotlyOutput("Mpie")),width=15)
+                                      
+                                      
+                                    )))
+                           ),
+                           tabItem(tabName  ="PP3",
+                                   
+                                   sidebarPanel(
+                                     selectInput("bi1","Choisir une variable Quantitative",
+                                                 choices =c(colnames(data1[c(5,11,2,10,13,15)])) ),
+                                     selectInput("new","Choisir une variable Quantitative",
+                                                 choices =c(colnames(data1[c(5,11,2,10,13,15)])) ),
+                                   
+                                   ),
+                                   mainPanel(
+                                     tabBox(title='Visualisation',
+                                    tabPanel("Scatter plot",plotlyOutput("ploting")) ,
+                                     
+                                    tabPanel("Matrice de correlation",
+                                             plotlyOutput("corr")         )
+                                    ,width=15)
+                                  
+                                   )
+                                   
+                                   ),
+                           tabItem(tabName = "PP4",
+                                   sidebarPanel(
+                                     selectInput("bi2","Choisir une variable Qualitative",
+                                                 choices =c(colnames(data1[-c(5,11,2,10,13,15)]))),
+                                     selectInput("new2","Choisir une variable Qualitative",
+                                                 choices =c(colnames(data1[-c(5,11,2,10,13,15)]))),
+                                     h3("Test du Khi2 :"),
+                                     tableOutput("test1")
+                                   ),
+                                   
+                                   mainPanel(
+                                     tabBox(title='Visualisation',
+                                            tabPanel("Barplot",plotlyOutput("biplot2")) ,
+                                            tabPanel("Tableaux croisés",verbatimTextOutput("tc")  ,plotOutput('tc2')   )
+                                            ,width=15)
+                                   )) ,
+                           tabItem(tabName = "PP5",
+                                   sidebarPanel(
+                                     selectInput("quali5","Choisir une variable Qualitative",
+                                                 choices =c(colnames(data1[-c(5,11,2,10,13,15)]))),
+                                     selectInput("quanti5","Choisir une variable Quantitative",
+                                                 choices =c(colnames(data1[c(5,11,2,10,13,15)]))),
+                                     h3("Test de Student :"),
+                                     tableOutput("test")
+                                   ),
+                                   
+                                   mainPanel(
+                                     tabBox(title='Visualisation',
+                                            tabPanel("Boxplot",plotlyOutput("biplot1")) 
+                                            
+                                            ,width=15)
+                                   )) ,
+                           
+                           
+                           tabItem(tabName = "B1",
+                                   tabBox(title="Decision tree",tabPanel("ROC curve",plotOutput("tya")),tabPanel("Tree",plotOutput("arbre")),width=15)),
+                           tabItem(tabName = "B2",
+                                   tabBox(title="Logistic",tabPanel("ROC curve",plotOutput("logit")),tabPanel("Tree",tableOutput("resum")),width=15)
+                                   ),
+                           tabItem(tabName = "B3",
+                                   tabBox(title="Random Forest",tabPanel("ROC curve",plotOutput("rand")),tabPanel("Confusion matrix and IC",verbatimTextOutput("resumx"),verbatimTextOutput("int2"),verbatimTextOutput("int")),tabPanel("Variable importance",DT::dataTableOutput("tab"),  plotlyOutput("oui"),plotlyOutput("oui2")),width=15)
+                           ),
+                           tabItem(tabName = "B4",
+                                   tabBox(title="Reseau de neurone",tabPanel("ROC curve",plotOutput("plot_rn")),tabPanel("ROC curve",plotOutput("plotnn")),width=15)
+                           ),
+                           tabItem(tabName="B5",
+                                    fluidRow( box(plotOutput("svm"),width = 15)),fluidRow(box(verbatimTextOutput("svm3")),box(verbatimTextOutput("svm2")))),
+                           
+                           tabItem(tabName="B6",box(plotOutput("knn"),width = 15)),
+                           tabItem(tabName = "B7",fluidRow(box(plotOutput("compare"),width=15)),fluidRow(tabBox(title = "Resume",width=15,tabPanel("Models",DT::dataTableOutput("compare2")),tabPanel("Models with K-fold cross validation",DT::dataTableOutput("compare3"))))),
+                           tabItem(tabName  ="B8",
+                                   
+                                   sidebarPanel(
+                                     selectInput("1","Solde du compte courant",
+                                                 choices =as.data.frame(table(datagraph$`Solde du compte courant`))[,1] ),
+                                     selectInput("3","Historique du credit",
+                                                 choices =as.data.frame(table(datagraph$`Historique des crédits`))[,1] ),
+                                     selectInput("4","Motif",
+                                                 choices =as.data.frame(table(datagraph$Motif))[,1] ),
+                                     selectInput("6","Compte d'épargne / obligations",
+                                                 choices =as.data.frame(table(datagraph$`Compte d'épargne / obligations`))[,1] ),
+                                     selectInput("7","Employé depuis",
+                                                 choices =as.data.frame(table(datagraph$`Employé depuis`))[,1] ),
+                                     selectInput("8","Sexe:",
+                                                 choices =as.data.frame(table(datagraph$`Statut personnel et sexe`))[,1] ),
+                                     selectInput("11","Logement",
+                                                 choices =as.data.frame(table(datagraph$Logement))[,1] ),
+                                     selectInput("13","Emploi",
+                                                 choices =as.data.frame(table(datagraph$Emploi))[,1] ),
+                                     sliderInput("2", "Duréé en mois",
+                                                 min = 0, max = 100, value = 4
+                                     ),
+                                     sliderInput("5", "Montant du crédit",
+                                                 min = 0, max =30000, value = 250
+                                     ),
+                                     sliderInput("9", "Résidence actuelle depuis",
+                                                 min = 0, max =15, value = 1
+                                     ),
+                                     sliderInput("10", "Age",
+                                                 min = 18, max =100, value = 20
+                                     ),
+                                     sliderInput("12", "Nombre de crédits existants dans cette banque",
+                                                 min = 0, max =10, value = 1
+                                     ),
+                                     sliderInput("14", "Nombre de personnes à charge",
+                                                 min = 0, max =5, value = 1
+                                     )
+                                     
+                                     
+                                   ),
+                                   mainPanel(
+                                    shinydashboard::valueBoxOutput("statut", width = 15)
+                                     #verbatimTextOutput("tajarba") 
+                                   )
+                                   
+                           )
+                           
+                            
+                          
+      
+    )
+  )
+))

@@ -1,0 +1,94 @@
+---
+title: "Seance6_P2"
+author: "Lahiani Oumaima"
+date: "17/05/2020"
+output: rmdformats::readthedown
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r  ,warning=F,message=F}
+library(data.table)
+library(tidyverse)
+```
+
+# Suite de l'atelier 6
+
+## Data
+```{r  ,warning=F,message=F}
+Database <- read.table("RAP-MSU_2020-03-24.txt", header =F)
+colnames(Database)= c("RAPDB","MSU")
+Database<-separate_rows(Database,"MSU",sep = ",")
+Database$MSU=sub(".[[:digit:]]*$", "", Database$MSU)
+Database<-as.data.table(Database)
+
+```
+
+
+
+
+## Rap2Msu
+
+```{r  ,warning=F,message=F}
+rap.id <- c("Os01g0100100", "Os01g0100200")
+Rap2Msu<-function(x){
+    data<-unique(Database[Database$RAPDB %in% x])
+    names(data)<-c("rap.id","msu.id")
+    return(data)
+}
+Rap2Msu(rap.id)
+
+```
+
+## Msu2Rap 
+
+
+```{r  ,warning=F,message=F}
+Msu.id <- c("LOC_Os01g01010", "LOC_Os01g01019")
+Msu2Rap <-function(Msu.id){
+    data<-unique(Database[Database$MSU %in% Msu.id])
+    data<-data[,c(2,1)]
+    names(data)<-c("msu.id","rap.id")
+    return(data)
+}
+Msu2Rap(Msu.id)
+```
+
+# Question CHALLENGE
+
+```{r  ,warning=F,message=F}
+library(readxl)
+vigne <- read_excel("Matching_between_V1_V2.xls")
+vigne<-data.table(vigne)
+head(vigne)
+```
+
+## v1v2
+
+```{r  ,warning=F,message=F}
+v1.id<-c("VIT_16s0050g01980","VIT_05s0020g02310","VIT_03s0038g00090")
+v1v2<-function(x){
+    data<-unique(vigne[vigne$V1 %in% x])
+    names(data)<-c("v1.id","v2.id")
+    return(data)
+}
+v1v2(v1.id)
+```
+
+## v2v1
+
+```{r  ,warning=F,message=F}
+v2.id<-c("VIT_203s0038g02430","VIT_219s0014g04090","VIT_203s0038g00090")
+v2v1<-function(x){
+    data<-unique(vigne[vigne$V2 %in% x])
+    data<-data[,c(2,1)]
+    names(data)<-c("v2.id","v1.id")
+    return(data)
+}
+
+v2v1(v2.id)
+```
+

@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1589720089286.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E77A41A0",
+    "lastKnownWriteTime" : 1589725855,
+    "last_content_update" : 1589725855337,
+    "path" : "C:/Users/asus/Desktop/Atelier1/appno.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "32,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

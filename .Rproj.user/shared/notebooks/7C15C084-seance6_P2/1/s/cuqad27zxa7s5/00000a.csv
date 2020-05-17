@@ -1,0 +1,7 @@
+"0","v1.id<-c(""VIT_16s0050g01980"",""VIT_05s0020g02310"",""VIT_03s0038g00090"")"
+"0","v1v2<-function(x){"
+"0","    data<-unique(vigne[vigne$V1 %in% x])"
+"0","    names(data)<-c(""v1.id"",""v2.id"")"
+"0","    return(data)"
+"0","}"
+"0","v1v2(v1.id)"

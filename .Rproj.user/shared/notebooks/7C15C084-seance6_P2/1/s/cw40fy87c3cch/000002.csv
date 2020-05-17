@@ -1,0 +1,8 @@
+"0","Msu.id <- c(""LOC_Os01g01010"", ""LOC_Os01g01019"")"
+"0","Msu2Rap <-function(Msu.id){"
+"0","    data<-unique(Database[Database$MSU %in% Msu.id])"
+"0","    data<-data[,c(2,1)]"
+"0","    names(data)<-c(""msu.id"",""rap.id"")"
+"0","    return(data)"
+"0","}"
+"0","Msu2Rap(Msu.id)"
